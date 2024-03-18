@@ -1,0 +1,84 @@
+{{ block "index" . }}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <title></title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="/css/index.css">
+        <script src="https://unpkg.com/htmx.org@1.9.11"
+                integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0"
+                crossorigin="anonymous"></script>
+    </head>
+    <body>
+    {{ template "createToDo" .FormData }}
+    <hr/>
+    {{ template "displayToDos" .Data }}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", (_) => {
+            document.body.addEventListener("htmx:beforeSwap", (event) => {
+                if (event.detail.xhr.status === 422) {
+                    event.detail.shouldSwap = true;
+                    event.detail.isError = false;
+                }
+            })
+
+            // for debugging htmx.
+            htmx.logAll();
+        })
+    </script>
+    </body>
+    </html>
+{{ end }}
+
+{{ block "createToDo" . }}
+    <form hx-swap="outerHTML" hx-post="/todos">
+        <label for="description">Description</label>
+        <input id="description" type="text" name="description" placeholder="description"
+                {{ if .Values.description }} value="{{ .Values.description }}" {{ end }}>
+
+        {{ if .Errors.description }}
+            <div style="color: red">{{ .Errors.description }}</div>
+        {{ end }}
+
+        <br>
+        <button type="submit">Submit</button>
+    </form>
+{{ end }}
+
+{{ block "displayToDos" . }}
+    <div id="todos" style="display: flex; flex-direction: column">
+        {{ range .ToDos }}
+            {{ template "toDo" . }}
+        {{ end }}
+    </div>
+{{ end }}
+
+{{ block "toDo" . }}
+    <div id="todo-{{ .ID }}" class="todo" style="display: flex; flex-direction: row">
+        <span hx-get="/todos/{{ .ID }}/toggle" hx-trigger="change" hx-target="#todo-{{ .ID }}" hx-swap="outerHTML">
+            <input type="checkbox" {{ if .Complete }}checked{{ end }}>
+        </span>
+        <span>{{ .Description }}</span>
+
+        <div hx-indicator="#delete-loading-{{ .ID }}" hx-target="#todo-{{ .ID }}" hx-swap="outerHTML swap:500ms"
+             hx-delete="/todos/{{ .ID }}" style="width: 1rem; cursor: pointer">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m6 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </div>
+
+        <div id="delete-loading-{{ .ID }}" class="htmx-indicator">
+            <img src="/img/bars.svg" alt="loading" style="width: 1rem">
+        </div>
+    </div>
+{{ end }}
+
+{{ block "oobToDo" . }}
+    <div id="todos" hx-swap-oob="afterbegin">
+        {{ template "toDo" . }}
+    </div>
+{{ end }}
